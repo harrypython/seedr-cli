@@ -9,7 +9,7 @@ import rarbg
 import pickle
 import base64
 import hashlib
-import pyperclip
+# import pyperclip
 import argparse
 import requests
 import bencodepy
@@ -17,6 +17,7 @@ import mySelenium
 from rich.table import Table
 from datetime import datetime
 from rich.console import Console
+from tqdm import tqdm
 
 console = Console()
 
@@ -38,6 +39,7 @@ parser.add_argument('-d', '--delete', action='store_true',
                     help='delete a torrent')
 parser.add_argument('-w', '--wishlist', action='store_true',
                     help='list items from the wishlist')
+parser.add_argument('-sv', '--save', type=str, nargs='+', help='Download and save')
 
 args = parser.parse_args()
 
@@ -402,7 +404,7 @@ def folderContent(FID):
             # target = sharedURL
             # print(f'{filename} {size}',
             #       f"\u001b]8;;{target}\u001b\\{text}\u001b]8;;\u001b\\")
-    pyperclip.copy(clip)
+    # pyperclip.copy(clip)
 
 
 def fetchFileLink(fileid):
@@ -530,12 +532,56 @@ def loginCheck():
         exit()
 
 
+def cleanUp():
+    url = 'https://www.seedr.cc/content.php'
+    params = {'action': 'list_contents'}
+    data = {'content_type': 'folder', 'content_id': '0'}
+
+    r = s.post(url, params=params, data=data, headers=headr)
+    print(r.status_code, r.reason)
+    for folder in r.json()['folders']:
+        deleteTorrent(folder['id'])
+
+
+def save_download(path):
+    if os.path.exists(path):
+        url = 'https://www.seedr.cc/content.php'
+        p = {'action': 'list_contents'}
+        d = {'content_type': 'folder', 'content_id': '0'}
+
+        r = s.post(url, params=p, data=d, headers=headr)
+        if r.status_code == 200:
+            d = {'content_type': 'folder', 'content_id': r.json()['folders'][0]['id']}
+            url = 'https://www.seedr.cc/content.php'
+            p = {'action': 'list_contents'}
+            rr = s.post(url, params=p, data=d, headers=headr)
+            if rr.status_code == 200:
+                for f in rr.json()['files']:
+                    resp = s.get(fetchFileLink(f.get("folder_file_id")),
+                                 stream=True,
+                                 headers=headr,
+                                 allow_redirects=True)
+                    total = int(resp.headers.get('content-length', 0))
+                    os.path.realpath(path)
+                    with open("{}/{}".format(os.path.realpath(path), f.get("name")), 'wb') as file, tqdm(
+                            desc=f.get("name"), total=total, unit='iB', unit_scale=True, unit_divisor=1024,
+                    ) as bar:
+                        for data in resp.iter_content(chunk_size=1024):
+                            size = file.write(data)
+                            bar.update(size)
+
+
 def exit():
     sys.exit()
 
 
 def main():
     loginCheck()
+    if args.save:
+        cleanUp()
+        magnetCheck(args.save[0])
+        save_download(args.save[1])
+        cleanUp()
     if args.active:
         activeTorrentProgress()
     if args.activeDelete:

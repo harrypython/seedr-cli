@@ -3,6 +3,7 @@ rich
 requests
 selenium
 argparse
-pyperclip
+# pyperclip
 bencodepy
 pytesseract
+tqdm
