@@ -14,6 +14,7 @@ import argparse
 import requests
 import bencodepy
 import mySelenium
+import tempfile
 from rich.table import Table
 from datetime import datetime
 from rich.console import Console
@@ -80,6 +81,14 @@ def magnetCheck(stringPassed):
         addTorrent(convertedMagnet)
     elif stringPassed.startswith('http') and stringPassed.endswith('.torrent'):
         addTorrent(stringPassed)
+    elif stringPassed.startswith('http') and not stringPassed.endswith('.torrent'):
+        fd, path = tempfile.mkstemp(suffix=".torrent")
+        try:
+            with os.fdopen(fd, 'wb') as tmp:
+                tmp.write(s.get(stringPassed, allow_redirects=True).content)
+                magnetCheck(path)
+        finally:
+            os.remove(path)
     else:
         console.print("Invalid input. Exiting...", style="red")
 
@@ -569,6 +578,8 @@ def save_download(path):
                         for data in resp.iter_content(chunk_size=1024):
                             size = file.write(data)
                             bar.update(size)
+                return True
+    return False
 
 
 def exit():
@@ -578,10 +589,13 @@ def exit():
 def main():
     loginCheck()
     if args.save:
+        if not os.path.exists(args.save[1]):
+            console.print("Path to save file do not exists.", style="red")
+            quit()
         cleanUp()
         magnetCheck(args.save[0])
-        save_download(args.save[1])
-        cleanUp()
+        if save_download(args.save[1]):
+            cleanUp()
     if args.active:
         activeTorrentProgress()
     if args.activeDelete:
