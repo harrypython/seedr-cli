@@ -536,7 +536,8 @@ def loginCheck():
     except KeyboardInterrupt:
         print("Exiting...")
         exit()
-    except:
+    except Exception as e:
+        print(e)
         print("Unknown error...")
         exit()
 
