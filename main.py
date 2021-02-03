@@ -526,11 +526,12 @@ def loginCheck():
 
     r = s.post(url, params=PARAMS, data=DATA, headers=headr)
     try:
-        if r.json()['result'] == 'login_required':
-            returned_cookie = mySelenium.call_me_niggas()
-            pickle.dump(returned_cookie, open(
-                f'{home}/.config/seedr-cli/seedr.cookie', "wb"))
-            print("Cookie added")
+        if "result" in r.json():
+            if r.json()['result'] == 'login_required':
+                returned_cookie = mySelenium.call_me_niggas()
+                pickle.dump(returned_cookie, open(
+                    f'{home}/.config/seedr-cli/seedr.cookie', "wb"))
+                print("Cookie added")
     except KeyError:
         pass
     except KeyboardInterrupt:
@@ -538,7 +539,6 @@ def loginCheck():
         exit()
     except Exception as e:
         print(e)
-        print("Unknown error...")
         exit()
 
 
@@ -549,8 +549,9 @@ def cleanUp():
 
     r = s.post(url, params=params, data=data, headers=headr)
     print(r.status_code, r.reason)
-    for folder in r.json()['folders']:
-        deleteTorrent(folder['id'])
+    if 'folders' in r.json():
+        for folder in r.json()['folders']:
+            deleteTorrent(folder['id'])
 
 
 def save_download(path):
